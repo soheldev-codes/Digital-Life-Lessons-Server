@@ -46,6 +46,38 @@ async function run() {
       }
     };
 
+    app.get("/comments/:lessonId", async (req, res) => {
+      const { lessonId } = req.params;
+
+      const comments = await commentsCollection
+        .find({ lessonId })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(comments);
+    });
+
+    //
+
+    app.post("/comments", async (req, res) => {
+      const { lessonId, text } = req.body;
+      const user = req.user;
+
+      const doc = {
+        lessonId,
+        text,
+        userName: user.name,
+        userEmail: user.email,
+        createdAt: new Date(),
+      };
+
+      const result = await commentsCollection.insertOne(doc);
+
+      res.send(result);
+    });
+
+    //
+
     app.get("/lessons/related/:category", async (req, res) => {
       const { category } = req.params;
       const exclude = req.query.exclude;
