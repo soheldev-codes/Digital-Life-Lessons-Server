@@ -46,6 +46,41 @@ async function run() {
       }
     };
 
+    app.get("/lessons/related/:category", async (req, res) => {
+      const { category } = req.params;
+      const exclude = req.query.exclude;
+
+      const lessons = await lessonsCollection
+        .find({
+          category,
+          _id: {
+            $ne: new ObjectId(exclude),
+          },
+          visibility: "Public",
+        })
+        .limit(6)
+        .toArray();
+
+      res.send(lessons);
+    });
+
+    //
+
+    app.patch("/lessons/views/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const result = await lessonsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $inc: {
+            views: 1,
+          },
+        },
+      );
+
+      res.send(result);
+    });
+
     // --- DASHBOARD & PROFILE ---
     app.get("/my-lessons/user/:email", async (req, res) => {
       res.send(
