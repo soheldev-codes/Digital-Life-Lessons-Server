@@ -425,30 +425,33 @@ async function run() {
       const { lessonId } = req.params;
 
       const comments = await commentsCollection
-        .find({ lessonId })
+        .find({ lesson_id: lessonId })
         .sort({ createdAt: -1 })
         .toArray();
 
       res.send(comments);
     });
 
-    //
-
     app.post("/comments", async (req, res) => {
-      const { lessonId, text } = req.body;
-      const user = req.user;
+      try {
+        const { lesson_id, text, user_name, user_photo, user_email } = req.body;
 
-      const doc = {
-        lessonId,
-        text,
-        userName: user.name,
-        userEmail: user.email,
-        createdAt: new Date(),
-      };
+        const doc = {
+          lesson_id,
+          text,
+          user_name,
+          user_photo,
+          user_email,
+          createdAt: new Date(),
+        };
 
-      const result = await commentsCollection.insertOne(doc);
+        const result = await commentsCollection.insertOne(doc);
 
-      res.send(result);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: error.message });
+      }
     });
 
     //
