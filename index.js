@@ -246,10 +246,9 @@ async function run() {
       try {
         const reportData = req.body;
 
-        // রিপোর্টটি ডাটাবেসে সেভ করা
         const result = await reportsCollection.insertOne({
           ...reportData,
-          createdAt: new Date(), // রিপোর্ট করার সময়টা রেকর্ড রাখার জন্য
+          createdAt: new Date(),
         });
 
         res.status(201).send({
@@ -300,7 +299,7 @@ async function run() {
     });
 
     // --- LESSON ROUTES ---
-    // ১. সব পাবলিক লেসন (Search, Filter, Sort)
+    // ১. (Search, Filter, Sort)
     app.get("/lessons", async (req, res) => {
       const { category, emotionalTone, search } = req.query;
       let query = { visibility: "Public" };
@@ -310,7 +309,7 @@ async function run() {
       res.send(await lessonsCollection.find(query).toArray());
     });
 
-    // ২. নতুন লেসন যোগ করা
+    //
     app.post("/add-lesson", async (req, res) => {
       const data = req.body;
       res.send(
@@ -334,7 +333,7 @@ async function run() {
     app.patch("/lessons/like/:id", async (req, res) => {
       try {
         const { id } = req.params;
-        const { email } = req.body; // এখানে destructuring করুন
+        const { email } = req.body;
 
         const lesson = await lessonsCollection.findOne({
           _id: new ObjectId(id),
@@ -346,7 +345,7 @@ async function run() {
             .send({ success: false, message: "Lesson not found" });
         }
 
-        // likes ফিল্ডটি চেক করুন, কারণ আপনি MongoDB-তে 'likes' নামে সেভ করছেন
+        //
         const likes = lesson.likes || [];
 
         let updatedLikes;
@@ -498,7 +497,7 @@ async function run() {
       );
     });
 
-    // ২. লেসন আপডেট করার রাউট (Patch)
+    //
     app.patch("/lessons/:id", async (req, res) => {
       const id = req.params.id;
       const updatedData = req.body;
@@ -509,7 +508,7 @@ async function run() {
       res.send(result);
     });
 
-    // ৩. লেসন ডিলিট করার রাউট
+    //
     app.delete("/lessons/:id", async (req, res) => {
       const id = req.params.id;
       const result = await lessonsCollection.deleteOne({
@@ -522,7 +521,7 @@ async function run() {
       res.send(await lessonsCollection.find().toArray());
     });
 
-    // লেসন ফিচার করা
+    //
     app.patch("/admin/lesson/feature/:id", verifyToken, async (req, res) => {
       res.send(
         await lessonsCollection.updateOne(
@@ -532,7 +531,7 @@ async function run() {
       );
     });
 
-    // রিপোর্ট করা লেসন দেখা
+    //
     app.get("/admin/reports", verifyToken, async (req, res) => {
       res.send(await reportsCollection.find().toArray());
     });
