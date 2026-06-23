@@ -46,6 +46,98 @@ async function run() {
       }
     };
 
+    //
+    app.patch("/lessons/like/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { email } = req.body; // এখানে destructuring করুন
+
+        const lesson = await lessonsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!lesson) {
+          return res
+            .status(404)
+            .send({ success: false, message: "Lesson not found" });
+        }
+
+        // likes ফিল্ডটি চেক করুন, কারণ আপনি MongoDB-তে 'likes' নামে সেভ করছেন
+        const likes = lesson.likes || [];
+
+        let updatedLikes;
+        if (likes.includes(email)) {
+          updatedLikes = likes.filter((item) => item !== email);
+        } else {
+          updatedLikes = [...likes, email];
+        }
+
+        await lessonsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              likes: updatedLikes,
+              reactionCount: updatedLikes.length,
+            },
+          },
+        );
+
+        res.send({
+          success: true,
+          likes: updatedLikes,
+          reactionCount: updatedLikes.length,
+        });
+      } catch (error) {
+        res.status(500).send({ success: false, message: error.message });
+      }
+    });
+    //
+
+    app.post("/lessons/favorite/:lessonId", async (req, res) => {
+      const { lessonId } = req.params;
+      const email = req?.body?.email;
+      console.log(email);
+
+      const existing = await favoritesCollection.findOne({
+        lessonId,
+        userEmail: email,
+      });
+
+      if (existing) {
+        await favoritesCollection.deleteOne({ _id: existing._id });
+
+        await lessonsCollection.updateOne(
+          { _id: new ObjectId(lessonId) },
+          {
+            $inc: {
+              saves_count: -1,
+            },
+          },
+        );
+
+        return res.send({ removed: true });
+      }
+
+      await favoritesCollection.insertOne({
+        lessonId,
+        userEmail: email,
+        createdAt: new Date(),
+      });
+
+      await lessonsCollection.updateOne(
+        { _id: new ObjectId(lessonId) },
+        {
+          $inc: {
+            saves_count: 1,
+          },
+        },
+      );
+
+      res.send({ added: true });
+    });
+
+    //
+
     app.get("/comments/:lessonId", async (req, res) => {
       const { lessonId } = req.params;
 
