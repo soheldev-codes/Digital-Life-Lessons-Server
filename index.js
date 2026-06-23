@@ -46,6 +46,290 @@ async function run() {
       }
     };
 
+    // --- ADMIN ROUTES ---
+
+    app.get("/admin/lessons", async (req, res) => {
+      try {
+        const lessons = await lessonsCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(lessons);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    app.patch("/admin/lessons/feature/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const lesson = await lessonsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        const result = await lessonsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              isFeatured: !lesson.isFeatured,
+            },
+          },
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    app.patch("/admin/lessons/review/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const lesson = await lessonsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        const result = await lessonsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              isReviewed: !lesson.isReviewed,
+            },
+          },
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    app.delete("/admin/lessons/:id", async (req, res) => {
+      try {
+        const result = await lessonsCollection.deleteOne({
+          _id: new ObjectId(req.params.id),
+        });
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    // --- USER ROUTES ---
+
+    app.patch("/users/:id/role", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { role } = req.body;
+
+        // validation
+        if (!role) {
+          return res.status(400).send({
+            success: false,
+            message: "Role is required",
+          });
+        }
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              role,
+            },
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Role updated successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
+    app.get("/all-lessons", async (req, res) => {
+      try {
+        const lessons = await lessonsCollection.find().toArray();
+        res.send(lessons);
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    app.get("/reports", async (req, res) => {
+      try {
+        const reports = await reportsCollection.find().toArray();
+        res.send(reports);
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    app.get("/users", async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { price } = req.body;
+
+        const amount = parseInt(price * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "bdt",
+          payment_method_types: ["card"],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    app.patch("/users/premium/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        const allUsers = await usersCollection.find().toArray();
+        console.log("ALL USERS:", allUsers);
+
+        const user = await usersCollection.findOne({ email });
+
+        const result = await usersCollection.updateOne(
+          { email },
+          {
+            $set: {
+              isPremium: true,
+            },
+          },
+        );
+
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.post("/reports", async (req, res) => {
+      try {
+        const reportData = req.body;
+
+        // রিপোর্টটি ডাটাবেসে সেভ করা
+        const result = await reportsCollection.insertOne({
+          ...reportData,
+          createdAt: new Date(), // রিপোর্ট করার সময়টা রেকর্ড রাখার জন্য
+        });
+
+        res.status(201).send({
+          success: true,
+          message: "Report submitted successfully",
+          reportId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error submitting report:", error);
+        res.status(500).send({
+          success: false,
+          message: "Failed to submit report",
+        });
+      }
+    });
+
+    //
+
+    app.get("/dashboard/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+
+        // user's created lessons
+        const lessons = await lessonsCollection
+          .find({ creatorEmail: email })
+          .toArray();
+
+        // favorite count
+        const favoritesCount = await favoritesCollection.countDocuments({
+          userEmail: email,
+        });
+
+        // total likes of all lessons
+        const totalLikes = lessons.reduce((sum, lesson) => {
+          return sum + (lesson.likes_count || 0);
+        }, 0);
+
+        res.send({
+          totalLessons: lessons.length,
+          favorites: favoritesCount,
+          totalLikes,
+        });
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    // --- LESSON ROUTES ---
+    // ১. সব পাবলিক লেসন (Search, Filter, Sort)
+    app.get("/lessons", async (req, res) => {
+      const { category, emotionalTone, search } = req.query;
+      let query = { visibility: "Public" };
+      if (category) query.category = category;
+      if (emotionalTone) query.emotionalTone = emotionalTone;
+      if (search) query.title = { $regex: search, $options: "i" };
+      res.send(await lessonsCollection.find(query).toArray());
+    });
+
+    // ২. নতুন লেসন যোগ করা
+    app.post("/add-lesson", async (req, res) => {
+      const data = req.body;
+      res.send(
+        await lessonsCollection.insertOne({ ...data, createdAt: new Date() }),
+      );
+    });
+
+    // Lession Details Page api
+
+    app.get("/lessons/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const lesson = await lessonsCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+      res.send(lesson);
+    });
+
     //
     app.patch("/lessons/like/:id", async (req, res) => {
       try {
