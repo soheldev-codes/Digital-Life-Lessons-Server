@@ -302,13 +302,30 @@ async function run() {
     // ১. (Search, Filter, Sort)
     app.get("/lessons", async (req, res) => {
       const { category, emotionalTone, search } = req.query;
-      let query = { visibility: "Public" };
+      let query = { visibility: "Public", isReviewed: true };
       if (category) query.category = category;
       if (emotionalTone) query.emotionalTone = emotionalTone;
       if (search) query.title = { $regex: search, $options: "i" };
       res.send(await lessonsCollection.find(query).toArray());
     });
 
+    app.get("/lessons/featured", async (req, res) => {
+      try {
+        const result = await lessonsCollection
+          .find({
+            isFeatured: true,
+            visibility: "Public",
+          })
+          .limit(6)
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
     //
     app.post("/add-lesson", async (req, res) => {
       const data = req.body;
