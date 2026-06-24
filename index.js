@@ -567,8 +567,56 @@ async function run() {
     });
 
     //
-    app.get("/admin/reports", verifyToken, async (req, res) => {
-      res.send(await reportsCollection.find().toArray());
+    // app.get("/admin/reports", verifyToken, async (req, res) => {
+    //   res.send(await reportsCollection.find().toArray());
+    // });
+
+    app.get("/admin/reports", async (req, res) => {
+      try {
+        const reports = await reportsCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(reports);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    app.delete("/admin/reports/lesson/:lessonId", async (req, res) => {
+      try {
+        const { lessonId } = req.params;
+
+        const result = await reportsCollection.deleteMany({
+          lesson_id: lessonId,
+        });
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
+    app.delete("/admin/reported-lessons/:lessonId", async (req, res) => {
+      try {
+        const { lessonId } = req.params;
+
+        await lessonsCollection.deleteOne({
+          _id: new ObjectId(lessonId),
+        });
+
+        await reportsCollection.deleteMany({
+          lesson_id: lessonId,
+        });
+
+        res.send({
+          success: true,
+          message: "Lesson deleted",
+        });
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
     });
 
     // --- ROOT & START ---
