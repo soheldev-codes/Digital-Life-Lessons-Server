@@ -326,6 +326,21 @@ async function run() {
         });
       }
     });
+
+    app.get("/lessons/most-saved", async (req, res) => {
+      try {
+        const lessons = await lessonsCollection
+          .find({ visibility: "Public" })
+          .sort({ saves_count: -1 })
+          .limit(5)
+          .toArray();
+
+        res.send(lessons);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
+
     //
     app.post("/add-lesson", async (req, res) => {
       const data = req.body;
